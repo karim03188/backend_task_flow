@@ -1,0 +1,201 @@
+###############################################################################
+# Task Flow API — HTTP request collection
+#
+# How to use:
+#   - VS Code: install the "REST Client" extension (humao.rest-client), open this
+#     file and click "Send Request" above any request.
+#   - IntelliJ / WebStorm: the built-in HTTP client runs these out of the box.
+#
+# Workflow:
+#   1. Start the backend:  npm run start:dev
+#   2. Run "Register" or "Login" below.
+#   3. Copy the `accessToken` from the response into the @accessToken variable.
+#   4. Run any authenticated request.
+#
+# The seed user is:  demo@taskflow.dev / Password123
+###############################################################################
+
+@baseUrl = http://localhost:3000/api/v1
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbXYxM3JzZ28wMDAwa2hiczJ1bnNrdWttIiwiZW1haWwiOiJkZW1vQHRhc2tmbG93LmRldiIsInRva2VuVmVyc2lvbiI6MiwiaWF0IjoxNzkxNTYwMTAxLCJleHAiOjE3OTIxNjQ5MDF9.evuVlXR7tkT6VNXYp7dK-YVWn-q8dRP4ojNO--4lFbM
+@taskId = PASTE_TASK_ID_HERE
+@categoryId = PASTE_CATEGORY_ID_HERE
+
+### Health check (public)
+GET {{baseUrl}}/health
+
+###############################################################################
+# AUTH
+###############################################################################
+
+### Register a new user (public)
+# @name register
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Jane Doe",
+  "email": "jane.doe@example.com",
+  "password": "Password123"
+}
+
+### Login (public) — sets @accessToken from the response automatically in editors
+# that support response variable capture.
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "demo@taskflow.dev",
+  "password": "NewPassword456"
+}
+
+### Current authenticated user
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{accessToken}}
+
+### Logout (revokes all existing tokens for this user)
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{accessToken}}
+
+###############################################################################
+# USERS
+###############################################################################
+
+### Get my profile
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{accessToken}}
+
+### Update my profile
+PATCH {{baseUrl}}/users/me
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Jane A. Doe"
+}
+
+### Change password (revokes all tokens; log in again afterwards)
+PATCH {{baseUrl}}/users/me/password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "Password123",
+  "newPassword": "NewPassword456"
+}
+
+###############################################################################
+# CATEGORIES
+###############################################################################
+
+### Create a category
+# @name createCategory
+POST {{baseUrl}}/categories
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Work",
+  "color": "#3B82F6"
+}
+
+### List categories (with task counts)
+GET {{baseUrl}}/categories
+Authorization: Bearer {{accessToken}}
+
+### Get one category
+GET {{baseUrl}}/categories/{{categoryId}}
+Authorization: Bearer {{accessToken}}
+
+### Update a category
+PATCH {{baseUrl}}/categories/{{categoryId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Work & Projects",
+  "color": "#2563EB"
+}
+
+### Delete a category (tasks keep existing, categoryId becomes null)
+DELETE {{baseUrl}}/categories/{{categoryId}}
+Authorization: Bearer {{accessToken}}
+
+###############################################################################
+# TASKS
+###############################################################################
+
+### Create a task
+# @name createTask
+POST {{baseUrl}}/tasks
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "title": "Prepare sprint report",
+  "description": "Summarise the completed tickets.",
+  "status": "TODO",
+  "priority": "HIGH",
+  "dueDate": "2026-12-31T17:00:00.000Z",
+  "categoryId": "{{categoryId}}"
+}
+
+### List tasks (pagination + filter + search + sort)
+GET {{baseUrl}}/tasks?page=1&limit=20&sortBy=createdAt&sortOrder=desc
+Authorization: Bearer {{accessToken}}
+
+### List tasks filtered
+GET {{baseUrl}}/tasks?status=TODO&priority=HIGH&search=report&overdue=false&sortBy=priority&sortOrder=desc
+Authorization: Bearer {{accessToken}}
+
+### List tasks due today
+GET {{baseUrl}}/tasks?dueToday=true
+Authorization: Bearer {{accessToken}}
+
+### List overdue tasks
+GET {{baseUrl}}/tasks?overdue=true
+Authorization: Bearer {{accessToken}}
+
+### Get one task
+GET {{baseUrl}}/tasks/{{taskId}}
+Authorization: Bearer {{accessToken}}
+
+### Update a task (partial)
+PATCH {{baseUrl}}/tasks/{{taskId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "title": "Prepare sprint report (final)",
+  "priority": "URGENT"
+}
+
+### Clear the due date and remove the category
+PATCH {{baseUrl}}/tasks/{{taskId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "dueDate": null,
+  "categoryId": null
+}
+
+### Mark a task as completed
+PATCH {{baseUrl}}/tasks/{{taskId}}/complete
+Authorization: Bearer {{accessToken}}
+
+### Reopen a completed task
+PATCH {{baseUrl}}/tasks/{{taskId}}/reopen
+Authorization: Bearer {{accessToken}}
+
+### Delete a task (204 No Content)
+DELETE {{baseUrl}}/tasks/{{taskId}}
+Authorization: Bearer {{accessToken}}
+
+###############################################################################
+# STATISTICS
+###############################################################################
+
+### Dashboard overview
+GET {{baseUrl}}/statistics/overview
+Authorization: Bearer {{accessToken}}

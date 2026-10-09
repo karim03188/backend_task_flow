@@ -3,6 +3,12 @@
 /node_modules
 /build
 
+# local databases (SQLite)
+prisma/*.db
+prisma/*.db-journal
+*.sqlite
+*.sqlite3
+
 # TypeScript build cache
 *.tsbuildinfo
 

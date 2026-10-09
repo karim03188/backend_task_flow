@@ -1,0 +1,102 @@
+// Task Flow — Prisma schema
+//
+// NOTE ON THE DATASOURCE
+// ----------------------
+// The original brief specified PostgreSQL + Docker Compose. Docker is not
+// available in this environment and the project owner explicitly requested a
+// local, zero-dependency database, so the datasource is SQLite. The schema is
+// intentionally portable: switching to PostgreSQL only requires changing the
+// `provider` below and regenerating migrations (see README -> "Switching to
+// PostgreSQL").
+//
+// NOTE ON ENUMS
+// -------------
+// Prisma does not support native enums on SQLite. Task status and priority are
+// therefore stored as strings and constrained/validated at the application
+// layer using the TypeScript enums in `src/tasks/task.enums.ts` and
+// `class-validator`'s `@IsEnum`. The allowed values are identical to the
+// PostgreSQL enum values from the brief.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String @id @default(cuid())
+  email        String @unique
+  name         String
+  passwordHash String
+
+  // Incremented on logout / password change. Every JWT embeds the tokenVersion
+  // it was issued with; a token is rejected when it no longer matches the value
+  // stored here. This is what makes "logout" a real, server-side revocation
+  // instead of only deleting a token on the client.
+  tokenVersion Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks      Task[]
+  categories Category[]
+
+  @@map("users")
+}
+
+model Category {
+  id    String  @id @default(cuid())
+  name  String
+  color String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tasks Task[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // A user cannot have two categories with the same name.
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("categories")
+}
+
+model Task {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+
+  // String columns validated against TaskStatus / TaskPriority enums.
+  status   String @default("TODO")
+  priority String @default("MEDIUM")
+
+  // Numeric rank (1=LOW .. 4=URGENT) so tasks can be sorted by priority in the
+  // database in a meaningful order on SQLite. Kept in sync by TasksService and
+  // never exposed through the API.
+  priorityRank Int @default(2)
+
+  dueDate     DateTime?
+  completedAt DateTime?
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, priority])
+  @@index([userId, categoryId])
+  @@index([userId, dueDate])
+  @@index([userId, createdAt])
+  @@map("tasks")
+}
